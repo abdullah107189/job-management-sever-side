@@ -107,14 +107,24 @@ async function run() {
       res.send(result)
     })
 
-    
+
     app.get('/all-jobs-bid-request/:email', async (req, res) => {
       const email = req.params.email;
       const findAllEmailDatas = await jobsBidCollection.find({ bidAuthorEmail: email }).toArray();
       res.send(findAllEmailDatas)
     })
 
-
+    app.patch('/update-status', async (req, res) => {
+      const body = req.body;
+      const filter = { _id: new ObjectId(body.bidId) }
+      const updateDoc = {
+        $set: {
+          status: body.status
+        }
+      }
+      const result = await jobsBidCollection.updateOne(filter, updateDoc)
+      res.send(result)
+    })
 
 
 
