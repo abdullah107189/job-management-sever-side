@@ -29,9 +29,6 @@ async function run() {
     const jobsBidCollection = database.collection("jobs-bid");
 
 
-
-
-
     app.get('/', (req, res) => {
       res.send('hello..')
     })
@@ -52,11 +49,13 @@ async function run() {
 
 
     app.get('/jobs/:id', async (req, res) => {
+
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await jobsCollection.findOne(query)
       res.send(result)
     })
+
     app.put('/jobs/:id', async (req, res) => {
       const id = req.params.id
       const body = req.body;
@@ -68,6 +67,7 @@ async function run() {
       const result = await jobsCollection.updateOne(filter, updateDoc, optional)
       res.send(result)
     })
+
     app.delete('/jobs/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -76,24 +76,25 @@ async function run() {
     })
 
 
-    // job bid api
+    // job bid api......................... 
+
     app.post('/jobs-bid', async (req, res) => {
       const bidRequest = req.body;
+      const matchEmailQuery = { bidEmail: bidRequest.bidEmail, job_id: bidRequest.job_id }
+      const findEmai = await jobsBidCollection.findOne(matchEmailQuery)
+      if (findEmai) {
+        return res.status(400).send('Already bided this email')
+      }
+
       const result = await jobsBidCollection.insertOne(bidRequest)
-      let newBid = 0;
-      const findJob = await jobsCollection.findOne({ _id: new ObjectId(bidRequest.job_id) })
-      if (findJob.total_bids) {
-        newBid = findJob.total_bids + 1
-      }
-      else {
-        newBid = 1
-      }
       const filter = { _id: new ObjectId(bidRequest.job_id) }
       const updateDoc = {
-        $set: { total_bids: newBid }
+        $inc: {
+          bid_count: 1
+        }
       }
-      const updateBidCount = await jobsCollection.updateOne(filter, updateDoc)
-      res.send(updateBidCount)
+      const increment = await jobsCollection.updateOne(filter, updateDoc)
+      res.send(increment)
     })
 
     app.get('/jobs-bid', async (req, res) => {
@@ -105,17 +106,13 @@ async function run() {
       const result = await jobsBidCollection.find(query).toArray()
       res.send(result)
     })
+
+    
     app.get('/all-jobs-bid-request/:email', async (req, res) => {
       const email = req.params.email;
-      const findAllEmailDatas = await jobsCollection.find({ authorEmail: email }).toArray();
-      for (const data of findAllEmailDatas) {
-        const id = data._id.toString()
-        const matchJobIdDatas = await jobsBidCollection.find({ job_id: id }).toArray()
-        console.log(matchJobIdDatas);
-      }
-      // res.send(result)
+      const findAllEmailDatas = await jobsBidCollection.find({ bidAuthorEmail: email }).toArray();
+      res.send(findAllEmailDatas)
     })
-
 
 
 
