@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId, serialize } = require('mongodb');
 require('dotenv').config()
 
 const port = process.env.PORT || 5000
@@ -37,15 +37,22 @@ async function run() {
       const result = await jobsCollection.insertOne(body);
       res.send(result)
     })
+
     app.get('/jobs', async (req, res) => {
       const email = req.query.email;
-      let query = {};
-      if (email) {
-        query = { authorEmail: email }
+      try {
+        let query = {};
+        if (email) {
+          query.authorEmail = email;
+        }
+        const results = await jobsCollection.find(query).toArray();
+        res.send(results);
       }
-      const result = await jobsCollection.find(query).toArray()
-      res.send(result)
-    })
+      catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Error fetching jobs" }); // Handle errors gracefully
+      }
+    });
 
 
     app.get('/jobs/:id', async (req, res) => {
@@ -126,6 +133,36 @@ async function run() {
       res.send(result)
     })
 
+    // get all jobs with search , filter, sort 
+    app.get('/all-jobs', async (req, res) => {
+      const search = req.query.search;
+      const filterByCategory = req.query.category;
+      const sort = req.query.sort;
+
+      let query = {}
+      // search query
+      if (search) {
+        query = {
+          job_title: {
+            $regex: search,
+            $options: "i"
+          }
+        }
+      }
+      // filter query
+      if (filterByCategory) { query.category = filterByCategory }
+      // sort query
+      let options = {}
+      if (sort) {
+        options = {
+          sort: {
+            deadline: sort === 'asc' ? 1 : -1
+          }
+        }
+      }
+      const result = await jobsCollection.find(query, options).toArray()
+      res.send(result)
+    })
 
 
     await client.db("admin").command({ ping: 1 });
