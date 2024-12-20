@@ -138,7 +138,9 @@ async function run() {
       const search = req.query.search;
       const filterByCategory = req.query.category;
       const sort = req.query.sort;
-
+      const limit = parseInt(req.query.limit);
+      const skip = parseInt(req.query.skip);
+      const skipPage = parseInt((limit * (skip - 1)))
       let query = {}
       // search query
       if (search) {
@@ -160,10 +162,27 @@ async function run() {
           }
         }
       }
-      const result = await jobsCollection.find(query, options).toArray()
+      const result = await jobsCollection.find(query, options).limit(limit).skip(skipPage).toArray()
       res.send(result)
     })
 
+    //count data for pagination 
+    app.get('/jobs-count', async (req, res) => {
+      const search = req.query.search;
+      const category = req.query.category;
+      let query = {}
+      if (search) {
+        query = {
+          job_title: {
+            $regex: search,
+            $options: "i"
+          }
+        }
+      }
+      if (category) { query.category = category }
+      const jobsCount = await jobsCollection.countDocuments(query)
+      res.send({ total_job: jobsCount })
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
